@@ -1,0 +1,10 @@
+# Credenciales y variables de entorno
+.env
+
+# Python
+__pycache__/
+*.pyc
+
+# Descargas temporales
+downloads/*
+!downloads/.gitkeep
