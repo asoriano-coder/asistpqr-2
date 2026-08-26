@@ -1,12 +1,10 @@
 import os
-import ssl
-import smtplib
 
 from datetime import datetime
-from email.message import EmailMessage
-from email.utils import formataddr
 from pathlib import Path
 from zoneinfo import ZoneInfo
+
+import resend
 
 from dotenv import load_dotenv
 
@@ -17,16 +15,16 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-GMAIL_USER = os.getenv(
-    "GMAIL_USER"
-)
-
-GMAIL_APP_PASSWORD = os.getenv(
-    "GMAIL_APP_PASSWORD"
+RESEND_API_KEY = os.getenv(
+    "RESEND_API_KEY"
 )
 
 EMAIL_DESTINO = os.getenv(
     "EMAIL_DESTINO"
+)
+
+EMAIL_REPLY_TO = os.getenv(
+    "EMAIL_REPLY_TO"
 )
 
 EMAIL_FROM_NAME = os.getenv(
@@ -34,12 +32,28 @@ EMAIL_FROM_NAME = os.getenv(
     "Asistente PQR"
 )
 
-EMAIL_REPLY_TO = os.getenv(
-    "EMAIL_REPLY_TO"
+# ------------------------------------------------------------
+# REMITENTE TEMPORAL DE RESEND
+#
+# Mientras no tengamos un dominio propio verificado
+# utilizaremos onboarding@resend.dev.
+# ------------------------------------------------------------
+
+RESEND_FROM_EMAIL = os.getenv(
+    "RESEND_FROM_EMAIL",
+    "onboarding@resend.dev"
 )
 
-SMTP_SERVIDOR = "smtp.gmail.com"
-SMTP_PUERTO = 465
+# ------------------------------------------------------------
+# COPIA
+#
+# Seguimos utilizando asoriano@ansonet.biz como CC.
+# Si existe GMAIL_USER en Railway reutilizamos esa variable.
+# ------------------------------------------------------------
+
+EMAIL_CC = os.getenv(
+    "GMAIL_USER"
+)
 
 
 # ============================================================
@@ -49,27 +63,31 @@ SMTP_PUERTO = 465
 
 def validar_configuracion_email():
 
-    if not GMAIL_USER:
-        raise ValueError(
-            "Falta GMAIL_USER en el archivo .env"
-        )
+    if not RESEND_API_KEY:
 
-    if not GMAIL_APP_PASSWORD:
         raise ValueError(
-            "Falta GMAIL_APP_PASSWORD "
-            "en el archivo .env"
+            "Falta RESEND_API_KEY "
+            "en las variables de entorno."
         )
 
     if not EMAIL_DESTINO:
+
         raise ValueError(
             "Falta EMAIL_DESTINO "
-            "en el archivo .env"
+            "en las variables de entorno."
         )
 
     if not EMAIL_REPLY_TO:
+
         raise ValueError(
             "Falta EMAIL_REPLY_TO "
-            "en el archivo .env"
+            "en las variables de entorno."
+        )
+
+    if not RESEND_FROM_EMAIL:
+
+        raise ValueError(
+            "Falta RESEND_FROM_EMAIL."
         )
 
 
@@ -86,11 +104,19 @@ def enviar_notificacion_reportes(
     validar_configuracion_email()
 
     # --------------------------------------------------------
-    # INFORMACIÓN REPORTE ID 3.11
+    # CONFIGURAR RESEND
+    # --------------------------------------------------------
+
+    resend.api_key = RESEND_API_KEY
+
+    # --------------------------------------------------------
+    # REPORTE ID 3.11
     # --------------------------------------------------------
 
     archivo_id311 = Path(
-        reporte_id311["archivo_local"]
+        reporte_id311[
+            "archivo_local"
+        ]
     )
 
     enlace_id311 = reporte_id311[
@@ -100,11 +126,13 @@ def enviar_notificacion_reportes(
     nombre_id311 = archivo_id311.name
 
     # --------------------------------------------------------
-    # INFORMACIÓN REPORTE ID 3.1
+    # REPORTE ID 3.1
     # --------------------------------------------------------
 
     archivo_id31 = Path(
-        reporte_id31["archivo_local"]
+        reporte_id31[
+            "archivo_local"
+        ]
     )
 
     enlace_id31 = reporte_id31[
@@ -118,56 +146,32 @@ def enviar_notificacion_reportes(
     # --------------------------------------------------------
 
     if not enlace_id311:
+
         raise ValueError(
-            "No se recibió el enlace de Google Drive "
-            "del reporte ID 3.11."
+            "No se recibió el enlace "
+            "de Google Drive del reporte ID 3.11."
         )
 
     if not enlace_id31:
+
         raise ValueError(
-            "No se recibió el enlace de Google Drive "
-            "del reporte ID 3.1."
+            "No se recibió el enlace "
+            "de Google Drive del reporte ID 3.1."
         )
 
     # --------------------------------------------------------
-    # FECHA Y HORA ECUADOR
+    # FECHA / HORA ECUADOR
     # --------------------------------------------------------
 
     momento_ecuador = datetime.now(
-        ZoneInfo("America/Guayaquil")
+        ZoneInfo(
+            "America/Guayaquil"
+        )
     )
 
     fecha_hora = momento_ecuador.strftime(
         "%d/%m/%Y %H:%M"
     )
-
-    print("")
-    print(
-        "=== ENVIANDO NOTIFICACIÓN POR CORREO ==="
-    )
-
-    print("Nombre remitente:")
-    print(EMAIL_FROM_NAME)
-
-    print("Cuenta SMTP:")
-    print(GMAIL_USER)
-
-    print("Destinatario:")
-    print(EMAIL_DESTINO)
-
-    print("Copia:")
-    print(GMAIL_USER)
-
-    print("Responder a:")
-    print(EMAIL_REPLY_TO)
-
-    print("")
-    print("Reporte ID 3.11:")
-    print(nombre_id311)
-
-    print("")
-    print("Reporte ID 3.1:")
-    print(nombre_id31)
 
     # --------------------------------------------------------
     # ASUNTO
@@ -178,26 +182,43 @@ def enviar_notificacion_reportes(
         f"{fecha_hora}"
     )
 
-    # --------------------------------------------------------
-    # CREAR MENSAJE
-    # --------------------------------------------------------
-
-    mensaje = EmailMessage()
-
-    mensaje["From"] = formataddr(
-        (
-            EMAIL_FROM_NAME,
-            GMAIL_USER
-        )
+    print("")
+    print(
+        "=== ENVIANDO NOTIFICACIÓN CON RESEND ==="
     )
 
-    mensaje["To"] = EMAIL_DESTINO
+    print(
+        "Remitente:"
+    )
 
-    mensaje["Cc"] = GMAIL_USER
+    print(
+        f"{EMAIL_FROM_NAME} "
+        f"<{RESEND_FROM_EMAIL}>"
+    )
 
-    mensaje["Reply-To"] = EMAIL_REPLY_TO
+    print(
+        "Destinatario:"
+    )
 
-    mensaje["Subject"] = asunto
+    print(
+        EMAIL_DESTINO
+    )
+
+    print(
+        "Copia:"
+    )
+
+    print(
+        EMAIL_CC
+    )
+
+    print(
+        "Responder a:"
+    )
+
+    print(
+        EMAIL_REPLY_TO
+    )
 
     # --------------------------------------------------------
     # TEXTO PLANO
@@ -214,13 +235,11 @@ def enviar_notificacion_reportes(
         "REPORTE ID 3.11\n"
         "Seguimiento de novedades PQR\n"
         f"{nombre_id311}\n\n"
-        "Enlace:\n"
         f"{enlace_id311}\n\n"
 
         "REPORTE ID 3.1\n"
         "Reporte de novedades\n"
         f"{nombre_id31}\n\n"
-        "Enlace:\n"
         f"{enlace_id31}\n\n"
 
         "Ubicación:\n"
@@ -229,10 +248,6 @@ def enviar_notificacion_reportes(
 
         "Proceso completado automáticamente "
         "por AsistPQR v2."
-    )
-
-    mensaje.set_content(
-        cuerpo_texto
     )
 
     # --------------------------------------------------------
@@ -253,8 +268,9 @@ def enviar_notificacion_reportes(
             </h2>
 
             <p>
-                AsistPQR completó correctamente la
-                actualización de los reportes de AuraQuantic.
+                AsistPQR completó correctamente
+                la actualización de los reportes
+                de AuraQuantic.
             </p>
 
             <p>
@@ -346,48 +362,68 @@ def enviar_notificacion_reportes(
     </html>
     """
 
-    mensaje.add_alternative(
-        cuerpo_html,
-        subtype="html"
-    )
-
     # --------------------------------------------------------
-    # ENVÍO SMTP
+    # PREPARAR PARÁMETROS RESEND
     # --------------------------------------------------------
 
-    contexto_ssl = ssl.create_default_context()
+    parametros = {
+
+        "from": (
+            f"{EMAIL_FROM_NAME} "
+            f"<{RESEND_FROM_EMAIL}>"
+        ),
+
+        "to": [
+            EMAIL_DESTINO
+        ],
+
+        "subject": asunto,
+
+        "html": cuerpo_html,
+
+        "text": cuerpo_texto,
+
+        "reply_to": (
+            EMAIL_REPLY_TO
+        ),
+    }
+
+    # --------------------------------------------------------
+    # CC SOLO SI EXISTE
+    # --------------------------------------------------------
+
+    if EMAIL_CC:
+
+        parametros[
+            "cc"
+        ] = [
+            EMAIL_CC
+        ]
+
+    # --------------------------------------------------------
+    # ENVIAR
+    # --------------------------------------------------------
 
     try:
 
-        with smtplib.SMTP_SSL(
-            SMTP_SERVIDOR,
-            SMTP_PUERTO,
-            context=contexto_ssl
-        ) as servidor:
-
-            print("")
-            print(
-                "Conectando con Gmail SMTP..."
-            )
-
-            servidor.login(
-                GMAIL_USER,
-                GMAIL_APP_PASSWORD
-            )
-
-            print(
-                "✅ Autenticación Gmail correcta."
-            )
-
-            servidor.send_message(
-                mensaje
-            )
+        respuesta = resend.Emails.send(
+            parametros
+        )
 
         print("")
         print(
-            "✅ CORREO ÚNICO ENVIADO CORRECTAMENTE"
+            "✅ CORREO ENVIADO CON RESEND"
         )
 
+        print(
+            "Respuesta:"
+        )
+
+        print(
+            respuesta
+        )
+
+        print("")
         print(
             "Para:",
             EMAIL_DESTINO
@@ -395,7 +431,7 @@ def enviar_notificacion_reportes(
 
         print(
             "CC:",
-            GMAIL_USER
+            EMAIL_CC
         )
 
         print(
@@ -410,23 +446,12 @@ def enviar_notificacion_reportes(
 
         return True
 
-    except smtplib.SMTPAuthenticationError as error:
-
-        print("")
-        print(
-            "❌ Error de autenticación Gmail."
-        )
-
-        raise RuntimeError(
-            "No fue posible autenticarse "
-            "contra Gmail SMTP."
-        ) from error
-
     except Exception as error:
 
         print("")
         print(
-            "❌ Error enviando correo:"
+            "❌ Error enviando correo "
+            "mediante Resend:"
         )
 
         print(
@@ -435,7 +460,7 @@ def enviar_notificacion_reportes(
 
         raise RuntimeError(
             "No fue posible enviar "
-            "la notificación por correo."
+            "la notificación mediante Resend."
         ) from error
 
 

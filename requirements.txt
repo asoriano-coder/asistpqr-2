@@ -1,3 +1,4 @@
 playwright==1.62.0
 python-dotenv
 openpyxl
+resend
