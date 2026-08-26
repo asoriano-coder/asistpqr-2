@@ -8,6 +8,10 @@ from reporte_id31_novedades_calidad import (
     ejecutar_reporte_id31,
 )
 
+from generador_json import (
+    generar_json_desde_excel,
+)
+
 from repositorio import (
     subir_reporte_a_gdrive,
 )
@@ -18,7 +22,7 @@ from notificaciones import (
 
 
 # ============================================================
-# VOLVER A LA PÁGINA PRINCIPAL DE AURAQUANTIC
+# VOLVER A HOME
 # ============================================================
 
 
@@ -29,10 +33,6 @@ def volver_a_home(page):
     print(" VOLVIENDO AL MENÚ PRINCIPAL AURAQUANTIC")
     print("==========================================")
 
-    # --------------------------------------------------------
-    # 1. VALIDAR QUE LA PESTAÑA SIGA ABIERTA
-    # --------------------------------------------------------
-
     if page.is_closed():
 
         raise RuntimeError(
@@ -40,49 +40,44 @@ def volver_a_home(page):
             "se encuentra cerrada."
         )
 
-    # --------------------------------------------------------
-    # 2. TRAER PESTAÑA PRINCIPAL AL FRENTE
-    # --------------------------------------------------------
-
     page.bring_to_front()
 
-    print("✅ Pestaña principal activada.")
+    print(
+        "✅ Pestaña principal activada."
+    )
 
-    print("URL actual de la pestaña principal:")
-    print(page.url)
+    print(
+        "URL actual:"
+    )
 
-    # --------------------------------------------------------
-    # 3. ASEGURAR QUE ESTAMOS EN HOME
-    # --------------------------------------------------------
+    print(
+        page.url
+    )
 
     if "Home.aspx" not in page.url:
 
         print("")
         print(
-            "La pestaña principal no está en Home.aspx."
+            "Regresando a Home.aspx..."
         )
 
-        print(
-            "Regresando a la página principal..."
+        partes_url = page.url.split(
+            "/"
         )
 
-        partes_url = page.url.split("/")
-
-        if len(partes_url) >= 3:
-
-            url_home = (
-                partes_url[0]
-                + "//"
-                + partes_url[2]
-                + "/Home.aspx"
-            )
-
-        else:
+        if len(partes_url) < 3:
 
             raise RuntimeError(
                 "No fue posible determinar "
-                "la URL principal de AuraQuantic."
+                "la URL de AuraQuantic."
             )
+
+        url_home = (
+            partes_url[0]
+            + "//"
+            + partes_url[2]
+            + "/Home.aspx"
+        )
 
         page.goto(
             url_home,
@@ -94,22 +89,17 @@ def volver_a_home(page):
             5000
         )
 
-    # --------------------------------------------------------
-    # 4. VALIDACIÓN FINAL
-    # --------------------------------------------------------
-
     if "Home.aspx" not in page.url:
 
         raise RuntimeError(
             "No fue posible regresar "
-            "a Home.aspx de AuraQuantic."
+            "a Home.aspx."
         )
 
     print("")
-    print("✅ MENÚ PRINCIPAL DISPONIBLE")
-
-    print("URL:")
-    print(page.url)
+    print(
+        "✅ MENÚ PRINCIPAL DISPONIBLE"
+    )
 
     return page
 
@@ -127,25 +117,21 @@ def main():
     print("==========================================")
 
     # ========================================================
-    # 1. LOGIN GENERAL
-    #
-    # Se realiza una sola vez.
+    # 1. LOGIN
     # ========================================================
 
-    playwright, browser, context, page = login_aura()
+    playwright, browser, context, page = (
+        login_aura()
+    )
 
     try:
-
-        # ====================================================
-        # 2. VALIDAR HOME
-        # ====================================================
 
         volver_a_home(
             page
         )
 
         # ====================================================
-        # 3. REPORTE ID 3.11
+        # 2. REPORTE ID 3.11
         # ====================================================
 
         print("")
@@ -153,30 +139,46 @@ def main():
         print("# INICIANDO REPORTE ID 3.11")
         print("########################################")
 
-        archivo_id311 = ejecutar_reporte_id311(
-            page,
-            context
+        archivo_id311 = (
+            ejecutar_reporte_id311(
+                page,
+                context
+            )
         )
 
         print("")
         print(
-            "✅ Reporte ID 3.11 generado localmente."
+            "✅ Excel ID 3.11 generado."
         )
 
-        print("Archivo:")
-        print(archivo_id311)
+        # ====================================================
+        # 3. GENERAR JSON ID 3.11
+        # ====================================================
+
+        json_id311 = (
+            generar_json_desde_excel(
+                archivo_excel=archivo_id311,
+                reporte_id="3.11",
+                reporte_nombre=(
+                    "Reporte de seguimiento "
+                    "de novedades PQR"
+                ),
+            )
+        )
 
         # ====================================================
-        # 4. SUBIR ID 3.11 A GOOGLE DRIVE
+        # 4. SUBIR XLSX ID 3.11
         # ====================================================
 
         print("")
         print("########################################")
-        print("# SUBIENDO REPORTE ID 3.11")
+        print("# SUBIENDO XLSX ID 3.11")
         print("########################################")
 
-        info_drive_id311 = subir_reporte_a_gdrive(
-            archivo_id311
+        info_drive_id311 = (
+            subir_reporte_a_gdrive(
+                archivo_id311
+            )
         )
 
         if not info_drive_id311.get(
@@ -184,40 +186,50 @@ def main():
         ):
 
             raise RuntimeError(
-                "El reporte ID 3.11 fue procesado, "
-                "pero no se obtuvo su enlace "
-                "de Google Drive."
+                "No se obtuvo enlace Drive "
+                "para XLSX ID 3.11."
+            )
+
+        # ====================================================
+        # 5. SUBIR JSON ID 3.11
+        # ====================================================
+
+        print("")
+        print("########################################")
+        print("# SUBIENDO JSON ID 3.11")
+        print("########################################")
+
+        info_json_id311 = (
+            subir_reporte_a_gdrive(
+                json_id311
+            )
+        )
+
+        if not info_json_id311.get(
+            "enlace_drive"
+        ):
+
+            raise RuntimeError(
+                "No se obtuvo enlace Drive "
+                "para JSON ID 3.11."
             )
 
         print("")
         print(
-            "✅ Reporte ID 3.11 confirmado "
-            "en Google Drive."
-        )
-
-        print("Enlace:")
-
-        print(
-            info_drive_id311[
-                "enlace_drive"
-            ]
+            "✅ ID 3.11 XLSX + JSON "
+            "confirmados en Google Drive."
         )
 
         # ====================================================
-        # 5. REGRESAR AL HOME
+        # 6. VOLVER HOME
         # ====================================================
-
-        print("")
-        print("########################################")
-        print("# PREPARANDO SEGUNDO REPORTE")
-        print("########################################")
 
         volver_a_home(
             page
         )
 
         # ====================================================
-        # 6. REPORTE ID 3.1
+        # 7. REPORTE ID 3.1
         # ====================================================
 
         print("")
@@ -225,30 +237,45 @@ def main():
         print("# INICIANDO REPORTE ID 3.1")
         print("########################################")
 
-        archivo_id31 = ejecutar_reporte_id31(
-            page,
-            context
+        archivo_id31 = (
+            ejecutar_reporte_id31(
+                page,
+                context
+            )
         )
 
         print("")
         print(
-            "✅ Reporte ID 3.1 generado localmente."
+            "✅ Excel ID 3.1 generado."
         )
 
-        print("Archivo:")
-        print(archivo_id31)
+        # ====================================================
+        # 8. GENERAR JSON ID 3.1
+        # ====================================================
+
+        json_id31 = (
+            generar_json_desde_excel(
+                archivo_excel=archivo_id31,
+                reporte_id="3.1",
+                reporte_nombre=(
+                    "Reporte de novedades"
+                ),
+            )
+        )
 
         # ====================================================
-        # 7. SUBIR ID 3.1 A GOOGLE DRIVE
+        # 9. SUBIR XLSX ID 3.1
         # ====================================================
 
         print("")
         print("########################################")
-        print("# SUBIENDO REPORTE ID 3.1")
+        print("# SUBIENDO XLSX ID 3.1")
         print("########################################")
 
-        info_drive_id31 = subir_reporte_a_gdrive(
-            archivo_id31
+        info_drive_id31 = (
+            subir_reporte_a_gdrive(
+                archivo_id31
+            )
         )
 
         if not info_drive_id31.get(
@@ -256,36 +283,97 @@ def main():
         ):
 
             raise RuntimeError(
-                "El reporte ID 3.1 fue procesado, "
-                "pero no se obtuvo su enlace "
-                "de Google Drive."
+                "No se obtuvo enlace Drive "
+                "para XLSX ID 3.1."
+            )
+
+        # ====================================================
+        # 10. SUBIR JSON ID 3.1
+        # ====================================================
+
+        print("")
+        print("########################################")
+        print("# SUBIENDO JSON ID 3.1")
+        print("########################################")
+
+        info_json_id31 = (
+            subir_reporte_a_gdrive(
+                json_id31
+            )
+        )
+
+        if not info_json_id31.get(
+            "enlace_drive"
+        ):
+
+            raise RuntimeError(
+                "No se obtuvo enlace Drive "
+                "para JSON ID 3.1."
             )
 
         print("")
         print(
-            "✅ Reporte ID 3.1 confirmado "
-            "en Google Drive."
-        )
-
-        print("Enlace:")
-
-        print(
-            info_drive_id31[
-                "enlace_drive"
-            ]
+            "✅ ID 3.1 XLSX + JSON "
+            "confirmados en Google Drive."
         )
 
         # ====================================================
-        # 8. AMBOS REPORTES CONFIRMADOS
+        # 11. VALIDACIÓN GENERAL
         # ====================================================
 
         print("")
         print("==========================================")
-        print("✅ LOS DOS REPORTES ESTÁN EN GOOGLE DRIVE")
+        print("✅ CAPA DE DATOS ACTUALIZADA")
         print("==========================================")
 
+        print("")
+        print(
+            "Archivos generados:"
+        )
+
+        print("")
+        print(
+            "ID 3.11 XLSX:"
+        )
+        print(
+            archivo_id311.name
+        )
+
+        print(
+            "ID 3.11 JSON:"
+        )
+        print(
+            json_id311.name
+        )
+
+        print("")
+        print(
+            "ID 3.1 XLSX:"
+        )
+        print(
+            archivo_id31.name
+        )
+
+        print(
+            "ID 3.1 JSON:"
+        )
+        print(
+            json_id31.name
+        )
+
+        # ====================================================
+        # 12. PREPARAR NOTIFICACIÓN
+        #
+        # Los enlaces visibles para el usuario continúan
+        # siendo los Excel.
+        # ====================================================
+
         reporte_notificacion_id311 = {
-            "archivo_local": archivo_id311,
+
+            "archivo_local": (
+                archivo_id311
+            ),
+
             "enlace_drive": (
                 info_drive_id311[
                     "enlace_drive"
@@ -294,7 +382,11 @@ def main():
         }
 
         reporte_notificacion_id31 = {
-            "archivo_local": archivo_id31,
+
+            "archivo_local": (
+                archivo_id31
+            ),
+
             "enlace_drive": (
                 info_drive_id31[
                     "enlace_drive"
@@ -303,7 +395,7 @@ def main():
         }
 
         # ====================================================
-        # 9. ENVIAR UN SOLO CORREO
+        # 13. CORREO ÚNICO
         # ====================================================
 
         print("")
@@ -317,7 +409,7 @@ def main():
         )
 
         # ====================================================
-        # 10. RESULTADO FINAL
+        # 14. FIN
         # ====================================================
 
         print("")
@@ -327,65 +419,21 @@ def main():
 
         print("")
         print(
-            "Flujo completado correctamente:"
+            "✅ 2 reportes Excel generados"
         )
 
         print(
-            "1. Login AuraQuantic"
+            "✅ 2 archivos JSON generados"
         )
 
         print(
-            "2. ID 3.11 generado"
+            "✅ 4 archivos almacenados "
+            "en Google Drive"
         )
 
         print(
-            "3. ID 3.11 subido a Google Drive"
+            "✅ Correo único enviado"
         )
-
-        print(
-            "4. Regreso al menú principal"
-        )
-
-        print(
-            "5. ID 3.1 generado"
-        )
-
-        print(
-            "6. ID 3.1 subido a Google Drive"
-        )
-
-        print(
-            "7. Un solo correo enviado "
-            "con ambos enlaces"
-        )
-
-        print("")
-        print("Reporte ID 3.11:")
-
-        print(
-            archivo_id311.name
-            if hasattr(
-                archivo_id311,
-                "name"
-            )
-            else archivo_id311
-        )
-
-        print("")
-        print("Reporte ID 3.1:")
-
-        print(
-            archivo_id31.name
-            if hasattr(
-                archivo_id31,
-                "name"
-            )
-            else archivo_id31
-        )
-
-    # ========================================================
-    # ERROR GENERAL
-    # ========================================================
 
     except Exception as error:
 
@@ -395,21 +443,18 @@ def main():
         print("==========================================")
 
         print("")
-        print(str(error))
-
-        # Mantiene código de salida de error.
-        # Esto será importante para Railway.
+        print(
+            str(error)
+        )
 
         raise
-
-    # ========================================================
-    # CIERRE COMPLETAMENTE AUTOMÁTICO
-    # ========================================================
 
     finally:
 
         print("")
-        print("Cerrando navegador...")
+        print(
+            "Cerrando navegador..."
+        )
 
         try:
 
@@ -422,8 +467,7 @@ def main():
         except Exception as error_cierre:
 
             print(
-                "⚠️ No fue posible cerrar "
-                "el navegador normalmente:"
+                "⚠️ Error cerrando navegador:"
             )
 
             print(
@@ -441,8 +485,7 @@ def main():
         except Exception as error_playwright:
 
             print(
-                "⚠️ No fue posible finalizar "
-                "Playwright normalmente:"
+                "⚠️ Error finalizando Playwright:"
             )
 
             print(
@@ -461,4 +504,5 @@ def main():
 
 
 if __name__ == "__main__":
+
     main()
