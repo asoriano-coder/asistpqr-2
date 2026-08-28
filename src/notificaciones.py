@@ -45,14 +45,15 @@ RESEND_FROM_EMAIL = os.getenv(
 )
 
 # ------------------------------------------------------------
-# COPIA
+# COPIA OPCIONAL
 #
-# Seguimos utilizando asoriano@ansonet.biz como CC.
-# Si existe GMAIL_USER en Railway reutilizamos esa variable.
+# EMAIL_CC es independiente de GMAIL_USER.
+# Si EMAIL_CC no existe o está vacío, el correo se enviará
+# únicamente al destinatario principal.
 # ------------------------------------------------------------
 
 EMAIL_CC = os.getenv(
-    "GMAIL_USER"
+    "EMAIL_CC"
 )
 
 
@@ -208,9 +209,10 @@ def enviar_notificacion_reportes(
         "Copia:"
     )
 
-    print(
-        EMAIL_CC
-    )
+    if EMAIL_CC:
+        print(EMAIL_CC)
+    else:
+        print("Sin copia")
 
     print(
         "Responder a:"
@@ -431,7 +433,7 @@ def enviar_notificacion_reportes(
 
         print(
             "CC:",
-            EMAIL_CC
+            EMAIL_CC if EMAIL_CC else "Sin copia"
         )
 
         print(
