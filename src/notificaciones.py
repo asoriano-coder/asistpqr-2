@@ -93,13 +93,16 @@ def validar_configuracion_email():
 
 
 # ============================================================
-# ENVIAR NOTIFICACIÓN DE LOS DOS REPORTES
+# ENVIAR NOTIFICACIÓN DE REPORTES
+#
+# ID 3.11 = OBLIGATORIO
+# ID 3.1  = OPCIONAL / MODO CONTINGENCIA
 # ============================================================
 
 
 def enviar_notificacion_reportes(
     reporte_id311,
-    reporte_id31
+    reporte_id31=None
 ):
 
     validar_configuracion_email()
@@ -111,8 +114,15 @@ def enviar_notificacion_reportes(
     resend.api_key = RESEND_API_KEY
 
     # --------------------------------------------------------
-    # REPORTE ID 3.11
+    # REPORTE ID 3.11 - OBLIGATORIO
     # --------------------------------------------------------
+
+    if not reporte_id311:
+
+        raise ValueError(
+            "No se recibió información "
+            "del reporte ID 3.11."
+        )
 
     archivo_id311 = Path(
         reporte_id311[
@@ -126,26 +136,6 @@ def enviar_notificacion_reportes(
 
     nombre_id311 = archivo_id311.name
 
-    # --------------------------------------------------------
-    # REPORTE ID 3.1
-    # --------------------------------------------------------
-
-    archivo_id31 = Path(
-        reporte_id31[
-            "archivo_local"
-        ]
-    )
-
-    enlace_id31 = reporte_id31[
-        "enlace_drive"
-    ]
-
-    nombre_id31 = archivo_id31.name
-
-    # --------------------------------------------------------
-    # VALIDAR ENLACES
-    # --------------------------------------------------------
-
     if not enlace_id311:
 
         raise ValueError(
@@ -153,12 +143,72 @@ def enviar_notificacion_reportes(
             "de Google Drive del reporte ID 3.11."
         )
 
-    if not enlace_id31:
+    # --------------------------------------------------------
+    # REPORTE ID 3.1 - OPCIONAL
+    # --------------------------------------------------------
 
-        raise ValueError(
-            "No se recibió el enlace "
-            "de Google Drive del reporte ID 3.1."
+    archivo_id31 = None
+    enlace_id31 = None
+    nombre_id31 = None
+
+    id31_disponible = False
+
+    if reporte_id31:
+
+        archivo_local_id31 = reporte_id31.get(
+            "archivo_local"
         )
+
+        enlace_id31 = reporte_id31.get(
+            "enlace_drive"
+        )
+
+        if (
+            archivo_local_id31
+            and enlace_id31
+        ):
+
+            archivo_id31 = Path(
+                archivo_local_id31
+            )
+
+            nombre_id31 = archivo_id31.name
+
+            id31_disponible = True
+
+    # --------------------------------------------------------
+    # ESTADO DE LA NOTIFICACIÓN
+    # --------------------------------------------------------
+
+    print("")
+    print("==========================================")
+
+    if id31_disponible:
+
+        print(
+            "✅ NOTIFICACIÓN CON ID 3.11 + ID 3.1"
+        )
+
+    else:
+
+        print(
+            "⚠️ NOTIFICACIÓN EN MODO CONTINGENCIA"
+        )
+
+        print(
+            "✅ ID 3.11 disponible."
+        )
+
+        print(
+            "⚠️ ID 3.1 no disponible."
+        )
+
+        print(
+            "➡️ Se enviará correo únicamente "
+            "con ID 3.11."
+        )
+
+    print("==========================================")
 
     # --------------------------------------------------------
     # FECHA / HORA ECUADOR
@@ -178,10 +228,19 @@ def enviar_notificacion_reportes(
     # ASUNTO
     # --------------------------------------------------------
 
-    asunto = (
-        "AsistPQR - Reportes actualizados - "
-        f"{fecha_hora}"
-    )
+    if id31_disponible:
+
+        asunto = (
+            "AsistPQR - Reportes actualizados - "
+            f"{fecha_hora}"
+        )
+
+    else:
+
+        asunto = (
+            "AsistPQR - Reporte 3.11 actualizado - "
+            f"{fecha_hora}"
+        )
 
     print("")
     print(
@@ -228,8 +287,8 @@ def enviar_notificacion_reportes(
 
     cuerpo_texto = (
         "AsistPQR completó correctamente "
-        "la actualización de los reportes "
-        "de AuraQuantic.\n\n"
+        "la actualización del reporte "
+        "ID 3.11 de AuraQuantic.\n\n"
 
         f"Fecha y hora de actualización:\n"
         f"{fecha_hora}\n\n"
@@ -238,12 +297,28 @@ def enviar_notificacion_reportes(
         "Seguimiento de novedades PQR\n"
         f"{nombre_id311}\n\n"
         f"{enlace_id311}\n\n"
+    )
 
-        "REPORTE ID 3.1\n"
-        "Reporte de novedades\n"
-        f"{nombre_id31}\n\n"
-        f"{enlace_id31}\n\n"
+    if id31_disponible:
 
+        cuerpo_texto += (
+            "REPORTE ID 3.1\n"
+            "Reporte de novedades\n"
+            f"{nombre_id31}\n\n"
+            f"{enlace_id31}\n\n"
+        )
+
+    else:
+
+        cuerpo_texto += (
+            "NOTA DE CONTINGENCIA\n"
+            "El reporte ID 3.1 no fue actualizado "
+            "en esta ejecución.\n"
+            "AsistPQR continuará operando "
+            "temporalmente con el reporte ID 3.11.\n\n"
+        )
+
+    cuerpo_texto += (
         "Ubicación:\n"
         "Google Drive > BotPQR > "
         "Reportes Auraquantic\n\n"
@@ -251,6 +326,63 @@ def enviar_notificacion_reportes(
         "Proceso completado automáticamente "
         "por AsistPQR v2."
     )
+
+    # --------------------------------------------------------
+    # BLOQUE HTML ID 3.1
+    # --------------------------------------------------------
+
+    if id31_disponible:
+
+        bloque_html_id31 = f"""
+            <hr>
+
+            <h3>
+                ID 3.1 - Reporte de novedades
+            </h3>
+
+            <p>
+                <strong>Archivo:</strong>
+                <br>
+                {nombre_id31}
+            </p>
+
+            <p>
+                <a
+                    href="{enlace_id31}"
+                    style="
+                        display: inline-block;
+                        padding: 12px 20px;
+                        background-color: #1a73e8;
+                        color: white;
+                        text-decoration: none;
+                        border-radius: 4px;
+                        font-weight: bold;
+                    "
+                >
+                    VER REPORTE ID 3.1
+                </a>
+            </p>
+        """
+
+    else:
+
+        bloque_html_id31 = """
+            <hr>
+
+            <h3>
+                Estado del reporte ID 3.1
+            </h3>
+
+            <p>
+                El reporte ID 3.1 no fue actualizado
+                en esta ejecución.
+            </p>
+
+            <p>
+                AsistPQR continuará operando
+                temporalmente con el reporte ID 3.11.
+            </p>
+        """
 
     # --------------------------------------------------------
     # HTML
@@ -271,8 +403,8 @@ def enviar_notificacion_reportes(
 
             <p>
                 AsistPQR completó correctamente
-                la actualización de los reportes
-                de AuraQuantic.
+                la actualización del reporte
+                ID 3.11 de AuraQuantic.
             </p>
 
             <p>
@@ -312,34 +444,7 @@ def enviar_notificacion_reportes(
                 </a>
             </p>
 
-            <hr>
-
-            <h3>
-                ID 3.1 - Reporte de novedades
-            </h3>
-
-            <p>
-                <strong>Archivo:</strong>
-                <br>
-                {nombre_id31}
-            </p>
-
-            <p>
-                <a
-                    href="{enlace_id31}"
-                    style="
-                        display: inline-block;
-                        padding: 12px 20px;
-                        background-color: #1a73e8;
-                        color: white;
-                        text-decoration: none;
-                        border-radius: 4px;
-                        font-weight: bold;
-                    "
-                >
-                    VER REPORTE ID 3.1
-                </a>
-            </p>
+            {bloque_html_id31}
 
             <hr>
 
@@ -446,6 +551,20 @@ def enviar_notificacion_reportes(
             asunto
         )
 
+        if id31_disponible:
+
+            print(
+                "✅ Correo enviado con "
+                "ID 3.11 + ID 3.1."
+            )
+
+        else:
+
+            print(
+                "✅ Correo enviado únicamente "
+                "con ID 3.11."
+            )
+
         return True
 
     except Exception as error:
@@ -482,5 +601,5 @@ if __name__ == "__main__":
     print(
         "Este módulo debe ser invocado "
         "por robot_pqr.py después de subir "
-        "los dos reportes a Google Drive."
+        "los reportes disponibles a Google Drive."
     )
